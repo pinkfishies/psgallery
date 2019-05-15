@@ -15,6 +15,7 @@ import 'plastic-image/plastic-image.js';
 import '@polymer/iron-icon/iron-icon.js';
 import './shared-styles.js';
 import './my-icons.js';
+import { setSyncInitialRender } from '@polymer/polymer/lib/utils/settings';
 
 class SlideShow extends PolymerElement { 
   static get properties() {
@@ -23,6 +24,11 @@ class SlideShow extends PolymerElement {
         type: String,
         reflectToAttribute: true,
         value: "All"
+      },
+      criteria: {
+        type: String,
+        reflectToAttribute: true,
+        value: "default"
       }
     }
   }
@@ -44,6 +50,13 @@ class SlideShow extends PolymerElement {
       }
       .options a {
         color: var(--app-primary-color);
+      }
+      .options a.sort {
+        padding: 0px 5px;
+        cursor:pointer;
+      }
+      .sorting {
+        padding-left:15px;
       }
       #clear {display:inline}
       #slideshow, #inner {
@@ -112,9 +125,12 @@ class SlideShow extends PolymerElement {
           handle-as="json"
           last-response="{{doc}}">
       </iron-ajax>
-      <div class='options'><b>Filtering by:</b> {{chosen}}<a href='#' id='clear' on-click="clear">clear filter <iron-icon icon="my-icons:close"></iron-icon></a></div>
-      <div id="slideshow" on-scroll="_scrollHandler"><div id="inner">
-        <dom-repeat id="repeater" class="iron-list" initialCount="4" items="{{doc.rows}}" as="rows" dom-if="{{rows.see}}" restamp filter="{{isTag(chosen)}}">
+      <div class='options'>
+        <span class='filter'><b>Filtering by:</b> {{chosen}}<a href='#' id='clear' on-click="clear">clear filter <iron-icon icon="my-icons:close"></iron-icon></a></span>
+        <span class='sorting'><b> Sort by:</b> <a class="sort default" on-click="default">Default</a><a class="sort date" on-click="date">Date</a><a class="sort active" on-click="active">Active</a></span>
+      </div>
+      <div id="slideshow"><div id="inner">
+        <dom-repeat id="repeater" class="iron-list" initialCount="4" items="{{doc.rows}}" as="rows" restamp filter="{{isTag(chosen)}}" sort="{{sort(criteria)}}" mutable-data>
           <template >
           
             <div class="container"><div class="card">
@@ -125,6 +141,7 @@ class SlideShow extends PolymerElement {
                 <div >Tag: <a href='#' class="tag" on-click="setTag">{{rows.tag}}</a></div>
                 <div >Source: <a href='#' class="source" on-click="setSource">{{rows.source}}</a></div>
                 <div >Org: <a href='#' class="org" on-click="setOrg">{{rows.org}}</a></div>
+                <div >Active: {{rows.active}}</div>
               </div>
             </div>
             </div>
@@ -139,6 +156,58 @@ class SlideShow extends PolymerElement {
     `;
   }
 
+  // Handle sorting
+  date(e) {
+    this.criteria = "date";
+  }
+  active(e) {
+    this.criteria = "active";
+  } 
+  default(e) {
+    this.criteria = "default";
+  }   
+  sort(criteria) {
+    if (!criteria || criteria == "default") {
+      return 0;
+    } else if ( criteria == "date") {
+      // deal with the Y2K problem
+      return function(a,b) {
+        const dateASplit = a.date.split("/");
+        let yearA = dateASplit[2];
+        if (yearA.length < 4) {
+          while (yearA.length < 4) { yearA= "0" + yearA;}
+        }
+        const sA = yearA + dateASplit[0] + dateASplit[1];
+        const dateBSplit = b.date.split("/");
+        let yearB = dateBSplit[2];
+        if (yearB.length < 4) {
+          while (yearB.length < 4) { yearB= "0" + yearB;}
+        }
+        const sB = yearB + dateBSplit[0] + dateBSplit[1];
+        if (sA < sB) {
+          return -1;
+        }
+        if (sA > sB) {
+          return 1;
+        }
+        return 0;
+      } 
+    } else {
+      return function(a,b) {
+        let c = a.active;
+        let d = b.active;
+        if (c < d) {
+          return -1;
+        }
+        if (d > c) {
+          return 1;
+        }
+        return 0;
+      } 
+    }
+  }
+
+  // Navigation controls
   prev() {
     const d = this.shadowRoot;
     d.getElementById('inner').scrollLeft -= window.innerWidth;
@@ -147,6 +216,8 @@ class SlideShow extends PolymerElement {
     const d = this.shadowRoot;
     d.getElementById('inner').scrollLeft += window.innerWidth; 
   } 
+
+  // Assign Filters
   setTag(e){
     const mytag = e.model.rows.tag;
     this.chosen = mytag;
