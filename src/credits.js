@@ -25,6 +25,7 @@ class Credits extends PolymerElement {
       <div class="card">
         <h1>Credits</h1>
         <p>Simple Gallery is made using Polymer 3.0 and vanilla javascript.</p>
+        <p>Visit the repository at <a href='https://github.com/pinkfishies/psgallery'>https://github.com/pinkfishies/psgallery</a></p>
       </div>
     `;
   }
